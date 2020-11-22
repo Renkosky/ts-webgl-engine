@@ -1,5 +1,6 @@
 import { gl, GLUtilities } from './core/gl/gl';
 import { Shader } from './core/gl/shader';
+import { GLBuffer, AttributeInfo } from './core/gl/glBuffer';
 export class Engine {
     constructor() {
         console.log('hi ts engine');
@@ -7,8 +8,7 @@ export class Engine {
     private _count = 0;
     private _canvas: HTMLCanvasElement;
     private _shader: Shader;
-    private _buffer: WebGLBuffer;
-
+    private _buffer: GLBuffer;
     start(): void {
         this._canvas = GLUtilities.initialize();
         gl.clearColor(0, 0, 0, 1);
@@ -28,18 +28,20 @@ export class Engine {
     }
 
     private loop(): void {
-        this._count++;
-        document.title = this._count.toString();
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this._buffer);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(0);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        this._buffer.bind();
+        this._buffer.draw();
         requestAnimationFrame(this.loop.bind(this));
     }
 
     private createBuffer(): void {
-        this._buffer = gl.createBuffer();
+        //3: x,y,z
+        this._buffer = new GLBuffer(3);
+        let positionAttribute = new AttributeInfo();
+        positionAttribute.location = this._shader.getAttributeLocation('a_position');
+        positionAttribute.offset = 0;
+        positionAttribute.size = 3;
+        this._buffer.addAttributeLocation(positionAttribute);
         let vertices = [
             //x,y,z
             0,
@@ -52,12 +54,9 @@ export class Engine {
             0.5,
             0,
         ];
-        gl.bindBuffer(gl.ARRAY_BUFFER, this._buffer);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(0);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, undefined);
-        gl.disableVertexAttribArray(0);
+        this._buffer.pushBackData(vertices);
+        this._buffer.upload();
+        this._buffer.unbind();
     }
 
     private loadShader(): void {
